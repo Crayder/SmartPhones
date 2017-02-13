@@ -14,11 +14,11 @@ enum E_PLAYER_DATA {
 }
 new PlayerData[MAX_PLAYERS][E_PLAYER_DATA];
 
-#include "CellPhones.pwn"
+#include "SmartPhones\CellPhones.pwn"
 
-#include "CellTowers.pwn"
-#include "WifiRouters.pwn"
+#include "SmartPhones\CellTowers.pwn"
+#include "SmartPhones\WifiRouters.pwn"
 
-//#include "Texting.pwn"
-//#include "Calling.pwn"
-//#include "DataWifi.pwn"
+//#include "SmartPhones\Texting.pwn"
+//#include "SmartPhones\Calling.pwn"
+//#include "SmartPhones\DataWifi.pwn"
