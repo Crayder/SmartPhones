@@ -6,7 +6,8 @@ enum E_ROUTER_DATA {
     Float:oRX, Float:oRY, Float:oRZ,
     Float:signalPower,
     
-    oID
+    oID,
+    Text3D:text
 }
 
 new Iterator:WifiRouter<MAX_CELL_TOWERS>,
@@ -15,7 +16,8 @@ new Iterator:WifiRouter<MAX_CELL_TOWERS>,
 enum E_PLAYER_WIFI_DATA {
     Float:signal
 }
-static PlayerWifiData[MAX_PLAYERS][E_PLAYER_CELL_DATA];
+new PlayerWifiData[MAX_PLAYERS][E_PLAYER_CELL_DATA];
+#define GetPlayerWifiSignal(%0)     (PlayerWifiData[%0][signal])
 
 ptask WifiSignalCheck[1000](playerid) {
     new Float:pX, Float:pY, Float:pZ;
@@ -32,21 +34,46 @@ stock CreateWifiRouter(model, Float:x, Float:y, Float:z, Float:rX, Float:rY, Flo
     new i = Iter_Free(WifiRouter);
     if(i != cellmin) {
         WifiRouters[i][oModel] = model;
-        WifiRouters[i][oX] = X;
-        WifiRouters[i][oY] = Y;
-        WifiRouters[i][oZ] = Z;
+        WifiRouters[i][oX] = x;
+        WifiRouters[i][oY] = y;
+        WifiRouters[i][oZ] = z;
         WifiRouters[i][oRX] = rX;
         WifiRouters[i][oRX] = rY;
         WifiRouters[i][oRX] = rZ;
         WifiRouters[i][signalPower] = power;
         
         // Create Object
-        WifiRouters[i][oID] = CreateDynamicObject(model, x, y, z, rX, rY, rZ, 500.0);
+        WifiRouters[i][oID] = CreateDynamicObject(model, x, y, z, rX, rY, rZ, -1, -1, -1, 500.0);
+        WifiRouters[i][text] = Create3DTextLabel(sprintf("WiFi Router #%i\nSignal Power: %0.2f", i, power), 0xAAFF00FF, x, y, z, 10.0, -1, true);
         
         Iter_Add(WifiRouter, i);
     }
     return i;
 }
+
+stock DestroyWifiRouter(id) {
+    if(!Iter_Contains(WifiRouter, id))
+        return 0;
+    
+    WifiRouters[id][oModel] = 0;
+    WifiRouters[id][oX] = 0.0;
+    WifiRouters[id][oY] = 0.0;
+    WifiRouters[id][oZ] = 0.0;
+    WifiRouters[id][oRX] = 0.0;
+    WifiRouters[id][oRY] = 0.0;
+    WifiRouters[id][oRZ] = 0.0;
+    WifiRouters[id][signalPower] = 0.0;
+    
+    DestroyDynamicObject(WifiRouters[id][oID]);
+    WifiRouters[id][oID] = 0;
+    Delete3DTextLabel(WifiRouters[id][text]);
+    WifiRouters[id][text] = Text3D:0;
+        
+    Iter_Remove(WifiRouter, id);
+    
+    return 1;
+}
+
 
 stock DestroyWifiRouter(id) {
     if(!Iter_Contains(WifiRouter, id))
