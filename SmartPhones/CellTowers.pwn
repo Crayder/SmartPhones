@@ -3,50 +3,113 @@
 // Jammer areas (handled by streamer) kill the player's signal no matter what (like when under water or in the middle of the forest).
 
 #define MAX_CELL_TOWERS                     (10)
-#define MAX_CELL_PLANS                      (15)
 #define MAX_CELL_SIGNAL                     (500.0)
 
-enum E_CELL_PLAN {
-    bool:texting,    
-    bool:textLimited,
-    bool:calling,    
-    bool:callLimited,
-    bool:data,       
-    bool:dataLimited,
-    
-    Float:minutes,
-    Float:dataAmount
-}
 enum E_TOWER_DATA {
     oModel,
     Float:oX, Float:oY, Float:oZ,
     Float:oRX, Float:oRY, Float:oRZ,
     Float:signalPower,
     
-    oID
+    oID,
+    Text3D:text
 }
 
 new Iterator:CellTower<MAX_CELL_TOWERS>,
-    CellPlans[MAX_CELL_PLANS][E_CELL_PLAN],
     CellTowers[MAX_CELL_TOWERS][E_TOWER_DATA]; // if(towers[i][oModel] = INVALID_OBJECT_ID) then tower doesn't exist
+
+enum E_PLAYER_CELL_DATA {
+    Float:signal,
     
-new CellPlanNames[MAX_CELL_PLANS][] = {
-    "Limited Texting (%i Mins)",
-    "Limited Texting (%i Mins)",
-    "Limited Texting (%i Mins)",
-    "Unlimited Texting",
-    "Limited Texting and Calling (%i Mins)",
-    "Limited Texting and Calling (%i Mins)",
-    "Limited Texting and Calling (%i Mins)",
-    "Unlimited Texting, Limited Calling (%i Mins)",
-    "Unlimited Texting, Limited Calling (%i Mins)",
-    "Unlimited Texting, Limited Calling (%i Mins)",
-    "Unlimited Texting and Calling",
-    "Unlimited Texting and Calling, Limited Data (%iMB)",
-    "Unlimited Texting and Calling, Limited Data (%iMB)",
-    "Unlimited Texting and Calling, Limited Data (%iMB)",
-    "Unlimited Everything"
-};
+    bool:inJammerArea,
+    bool:inAbsoluteArea
+}
+new PlayerCellData[MAX_PLAYERS][E_PLAYER_CELL_DATA];
+#define GetPlayerCellSignal(%0)     (PlayerWifiData[%0][signal])
+
+ptask CellSignalCheck[1000](playerid) {
+    new Float:pX, Float:pY, Float:pZ,
+        Float:retF[15], ret[15];
+    
+    GetPlayerPos(playerid, pX, pY, pZ);
+    
+    if(PlayerData[playerid][hasPhone]) {
+        if(PlayerCellData[playerid][inJammerArea]) {
+            PlayerCellData[playerid][signal] = 0.0;
+            PlayerData[playerid][hasCellSignal] = false;
+        }
+        else if(PlayerCellData[playerid][inAbsoluteArea]) {
+            PlayerCellData[playerid][signal] = 5000.0;
+            PlayerData[playerid][hasCellSignal] = true;
+        }
+        else foreach(new t: CellTower) {
+            // Verify distance first.
+            PlayerData[playerid][hasCellSignal] = (VectorSize(floatabs(CellTowers[t][oX] - pX), floatabs(CellTowers[t][oY] - pY), floatabs(CellTowers[t][oZ] - pZ)) < PlayerCellData[playerid][signal]);
+            
+            // Then collisions.
+            if(PlayerData[playerid][hasCellSignal]) {
+                new result = CA_RayCastMultiLine(
+                        CellTowers[t][oX], CellTowers[t][oY], CellTowers[t][oZ] + 100.0, // point 100 units above tower
+                        pX, pY, pZ,
+                        retF, retF, retF, retF, ret
+                    );
+                
+                // Calculate signal based on number of collisions
+                PlayerCellData[playerid][signal] = ((CellTowers[t][signalPower]) - ((CellTowers[t][signalPower] / 15.0) * result));
+                PlayerCellData[playerid][signal] = PlayerCellData[playerid][signal] < 0.0 ? 0.0 : PlayerCellData[playerid][signal];
+                PlayerCellData[playerid][signal] = PlayerCellData[playerid][signal] > CellTowers[t][signalPower] ? CellTowers[t][signalPower] : PlayerCellData[playerid][signal];
+                
+                // Player has sufficient connection to tower?
+                PlayerData[playerid][hasCellSignal] = (PlayerCellData[playerid][signal] > 0.0);
+            }
+        }
+    }
+}
+
+stock CreateCellTower(model, Float:x, Float:y, Float:z, Float:rX, Float:rY, Float:rZ, Float:power) {
+    new i = Iter_Free(CellTower);
+    if(i != cellmin) {
+        CellTowers[i][oModel] = model;
+        CellTowers[i][oX] = x;
+        CellTowers[i][oY] = y;
+        CellTowers[i][oZ] = z;
+        CellTowers[i][oRX] = rX;
+        CellTowers[i][oRX] = rY;
+        CellTowers[i][oRX] = rZ;
+        CellTowers[i][signalPower] = power;
+        
+        // Create Object
+        CellTowers[i][oID] = CreateDynamicObject(model, x, y, z, rX, rY, rZ, -1, -1, -1, 500.0);
+        CellTowers[i][text] = Create3DTextLabel(sprintf("Cell Tower #%i\nSignal Power: %0.2f", i, power), 0xAAFF00FF, x, y, z, 10.0, -1, true);
+        
+        Iter_Add(CellTower, i);
+    }
+    return i;
+}
+
+stock DestroyCellTower(id) {
+    if(!Iter_Contains(CellTower, id))
+        return 0;
+    
+    CellTowers[id][oModel] = 0;
+    CellTowers[id][oX] = 0.0;
+    CellTowers[id][oY] = 0.0;
+    CellTowers[id][oZ] = 0.0;
+    CellTowers[id][oRX] = 0.0;
+    CellTowers[id][oRY] = 0.0;
+    CellTowers[id][oRZ] = 0.0;
+    CellTowers[id][signalPower] = 0.0;
+    
+    DestroyDynamicObject(CellTowers[id][oID]);
+    CellTowers[id][oID] = 0;
+    Delete3DTextLabel(CellTowers[id][text]);
+    CellTowers[id][text] = Text3D:0;
+        
+    Iter_Remove(CellTower, id);
+    
+    return 1;
+}
+
 
 
 
