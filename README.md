@@ -18,7 +18,7 @@ Features to come:
 - [ ] "Do we get free wifi at Burger Shot or Well Stacked?" (wifi routers will be placed all over, some will even have passwords that must be given by administrators)
 - [ ] "Do we get personal wifi at our house?" (players can pay for wifi at home?)
 - [ ] Cell towers placed around San Andreas. Will lose signal with distance and number of object collisions between tower and players.
-- [ ] Extensive cell plans with different abilties.
+- [ ] Extensive cell plans with different abilities.
 - [ ] Web pages/data using apps. Web pages will take 1mb each from player's data. Apps will use different amounts.
 - [ ] Adding wifi to phone. Routers will have SSID's and passwords. Players will need to add the routers whether they have passwords or not. If they have a password the player will need to get it from someone.
 - [ ] Texting, calling, data use.
